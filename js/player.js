@@ -240,7 +240,7 @@ const Player = (() => {
   }
 
   // seekTo: pct (0-100) or absolute seconds
-  function seekTo(val, isAbsolute = false) {
+  function seekTo(val, isAbsolute = false, noSync = false) {
     if (!currentSong) return;
     const isHtmlAudio = useHires || !!currentSong.streamUrl;
     const dur = isHtmlAudio ? audioPlayer.duration : (ytReady ? ytPlayer.getDuration() : 0);
@@ -249,7 +249,7 @@ const Player = (() => {
     if (isHtmlAudio) audioPlayer.currentTime = pos;
     else if (ytReady) ytPlayer.seekTo(pos, true);
     
-    if (!isRemoteAction) {
+    if (!isRemoteAction && !noSync) {
       Pairing.sendSync({ type: 'seek', position: pos });
     }
   }
@@ -409,25 +409,57 @@ const Player = (() => {
     const track = document.getElementById('progress-track');
     if (!track) return;
     let dragging = false;
+    let lastPct = 0;
 
     function pct(e) {
       const rect = track.getBoundingClientRect();
-      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const x = (e.touches && e.touches.length > 0 ? e.touches[0].clientX : (e.clientX || 0)) - rect.left;
       return Math.max(0, Math.min(100, x / rect.width * 100));
     }
 
     track.addEventListener('click', e => seekTo(pct(e)));
-    track.addEventListener('mousedown', () => {
+    
+    // Mouse dragging
+    track.addEventListener('mousedown', e => {
       dragging = true;
+      lastPct = pct(e);
       document.addEventListener('mousemove', onDrag);
       document.addEventListener('mouseup', onUp);
     });
-    function onDrag(e) { if (dragging) seekTo(pct(e)); }
-    function onUp() { dragging = false; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', onUp); }
+    function onDrag(e) { 
+      if (dragging) { 
+        lastPct = pct(e); 
+        seekTo(lastPct, false, true); // noSync true
+      } 
+    }
+    function onUp() { 
+      if (dragging) { 
+        dragging = false; 
+        seekTo(lastPct, false, false); // final sync true
+      } 
+      document.removeEventListener('mousemove', onDrag); 
+      document.removeEventListener('mouseup', onUp); 
+    }
 
-    track.addEventListener('touchstart', () => { dragging = true; }, { passive: true });
-    track.addEventListener('touchmove', e => { if (dragging) seekTo(pct(e)); }, { passive: true });
-    track.addEventListener('touchend', () => { dragging = false; });
+    // Touch dragging
+    track.addEventListener('touchstart', e => { 
+      dragging = true; 
+      lastPct = pct(e); 
+    }, { passive: true });
+    
+    track.addEventListener('touchmove', e => { 
+      if (dragging) { 
+        lastPct = pct(e); 
+        seekTo(lastPct, false, true); // noSync true
+      } 
+    }, { passive: true });
+    
+    track.addEventListener('touchend', () => { 
+      if (dragging) { 
+        dragging = false; 
+        seekTo(lastPct, false, false); // final sync true
+      } 
+    });
   });
 
   // ── Download via Cobalt.tools ──

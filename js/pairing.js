@@ -196,10 +196,6 @@ const Pairing = (() => {
 
   // ── Receive + apply messages (Bi-directional Party Mode) ──
   function handleSyncMsg(msg, specificLatency = 0) {
-    if (isSyncing) return;
-    isSyncing = true;
-    setTimeout(() => isSyncing = false, 100);
-
     const networkDelay = (Date.now() - msg.ts) / 1000; 
 
     if (msg.type === 'state' || msg.type === 'load') {
