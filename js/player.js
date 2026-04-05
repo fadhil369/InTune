@@ -193,13 +193,16 @@ const Player = (() => {
   function toggleHires() {
     useHires = !useHires;
     const btn = document.getElementById('btn-hires-toggle');
+    const btnFp = document.getElementById('btn-hires-toggle-fp');
     if (useHires) {
       btn.innerHTML = '🎧 HQ: ON';
       btn.style.background = 'linear-gradient(135deg, #ec4899, #8b5cf6)';
+      if (btnFp) { btnFp.innerHTML = '🎧 HQ: ON'; btnFp.style.background = 'linear-gradient(135deg, #ec4899, #8b5cf6)'; }
       if (currentSong && !currentSong.streamUrl) { const t = getCurrentTime(); playSong(currentSong, false, t); }
     } else {
       btn.innerHTML = '🎧 HQ: OFF';
       btn.style.background = 'rgba(255,255,255,0.1)';
+      if (btnFp) { btnFp.innerHTML = '🎧 HQ'; btnFp.style.background = 'rgba(255,255,255,0.1)'; }
       if (currentSong && !currentSong.streamUrl) { const t = audioPlayer.currentTime; audioPlayer.pause(); playSong(currentSong, false, t); }
     }
   }
@@ -258,10 +261,20 @@ const Player = (() => {
     lastVol = +v;
     if (ytReady && ytPlayer) ytPlayer.setVolume(+v);
     audioPlayer.volume = Math.max(0, Math.min(1, (+v)/100));
+    
+    // Update both icons
     const icon = document.getElementById('vol-icon');
-    if (icon) icon.textContent = +v === 0 ? '🔇' : +v < 40 ? '🔉' : '🔊';
+    const iconFp = document.getElementById('vol-icon-fp');
+    const icoStr = +v === 0 ? '🔇' : +v < 40 ? '🔉' : '🔊';
+    if (icon) icon.textContent = icoStr;
+    if (iconFp) iconFp.textContent = icoStr;
+    
+    // Update both sliders
     const slider = document.getElementById('vol-slider');
+    const sliderFp = document.getElementById('vol-slider-fp');
     if (slider && +slider.value !== +v) slider.value = v;
+    if (sliderFp && +sliderFp.value !== +v) sliderFp.value = v;
+    
     muted = +v === 0;
   }
 
@@ -273,6 +286,8 @@ const Player = (() => {
   function toggleShuffle() {
     shuffle = !shuffle;
     document.getElementById('btn-shuffle').classList.toggle('active', shuffle);
+    const btnFp = document.getElementById('btn-shuffle-fp');
+    if (btnFp) btnFp.classList.toggle('active', shuffle);
     App.toast(shuffle ? 'Shuffle on 🔀' : 'Shuffle off', 'info');
   }
 
@@ -281,9 +296,16 @@ const Player = (() => {
     const icons = { none:'⟲', one:'🔂', all:'🔁' };
     const idx = modes.indexOf(repeat);
     repeat = modes[(idx + 1) % modes.length];
+    
     const btn = document.getElementById('btn-repeat');
     btn.classList.toggle('active', repeat !== 'none');
     btn.textContent = icons[repeat];
+    
+    const btnFp = document.getElementById('btn-repeat-fp');
+    if (btnFp) {
+      btnFp.classList.toggle('active', repeat !== 'none');
+      btnFp.textContent = icons[repeat];
+    }
     App.toast('Repeat: ' + repeat, 'info');
   }
 
@@ -371,10 +393,22 @@ const Player = (() => {
       
       if (!isPlaying) return;
       const pct = dur ? (cur / dur * 100) : 0;
+      
+      // Update Mini Player
       document.getElementById('progress-fill').style.width = pct + '%';
       document.getElementById('progress-thumb').style.left = pct + '%';
       document.getElementById('t-cur').textContent = fmtTime(cur);
       document.getElementById('t-tot').textContent = fmtTime(dur);
+      
+      // Update Full Player
+      const fpFill = document.getElementById('fp-progress-fill');
+      if (fpFill) {
+        fpFill.style.width = pct + '%';
+        document.getElementById('fp-progress-thumb').style.left = pct + '%';
+        document.getElementById('t-cur-fp').textContent = fmtTime(cur);
+        document.getElementById('t-tot-fp').textContent = fmtTime(dur);
+      }
+      
       progressRAF = requestAnimationFrame(tick);
     }
     progressRAF = requestAnimationFrame(tick);
@@ -393,6 +427,8 @@ const Player = (() => {
   function setPlayBtn(paused) {
     const btn = document.getElementById('btn-play');
     if (btn) btn.textContent = paused ? '▶' : '⏸';
+    const btnFp = document.getElementById('btn-play-fp');
+    if (btnFp) btnFp.textContent = paused ? '▶' : '⏸';
   }
 
   function updateNowPlaying(song) {
@@ -401,6 +437,14 @@ const Player = (() => {
     const thumb = document.getElementById('np-thumb');
     thumb.src = song.thumb || '';
     thumb.classList.add('active');
+    
+    // Update Full Screen Player
+    const fpTitle = document.getElementById('fp-title');
+    if (fpTitle) {
+      fpTitle.textContent = song.title;
+      document.getElementById('fp-artist').textContent = song.artist;
+      document.getElementById('fp-thumb').src = song.thumb || '';
+    }
     document.title = `${song.title} — InTune`;
   }
 
@@ -460,6 +504,29 @@ const Player = (() => {
         seekTo(lastPct, false, false); // final sync true
       } 
     });
+    
+    // ── Full-Screen Progress Track Dragging ──
+    const fpTrack = document.getElementById('fp-progress-track');
+    if (fpTrack) {
+      let fpDragging = false;
+      let fpLastPct = 0;
+      function fpPct(e) {
+        const rect = fpTrack.getBoundingClientRect();
+        const x = (e.touches && e.touches.length ? e.touches[0].clientX : (e.clientX || 0)) - rect.left;
+        return Math.max(0, Math.min(100, x / rect.width * 100));
+      }
+      fpTrack.addEventListener('click', e => seekTo(fpPct(e)));
+      fpTrack.addEventListener('mousedown', e => {
+        fpDragging = true; fpLastPct = fpPct(e);
+        document.addEventListener('mousemove', fpOnDrag);
+        document.addEventListener('mouseup', fpOnUp);
+      });
+      function fpOnDrag(e) { if (fpDragging) { fpLastPct = fpPct(e); seekTo(fpLastPct, false, true); } }
+      function fpOnUp() { if (fpDragging) { fpDragging = false; seekTo(fpLastPct, false, false); } document.removeEventListener('mousemove', fpOnDrag); document.removeEventListener('mouseup', fpOnUp); }
+      fpTrack.addEventListener('touchstart', e => { fpDragging = true; fpLastPct = fpPct(e); }, { passive: true });
+      fpTrack.addEventListener('touchmove', e => { if (fpDragging) { fpLastPct = fpPct(e); seekTo(fpLastPct, false, true); } }, { passive: true });
+      fpTrack.addEventListener('touchend', () => { if(fpDragging){ fpDragging = false; seekTo(fpLastPct, false, false); } });
+    }
   });
 
   // ── Download via Cobalt.tools ──

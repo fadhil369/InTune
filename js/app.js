@@ -162,6 +162,8 @@ const App = (() => {
     const liked = likedSongs.some(s => s.id === song.id);
     const btn = document.getElementById('btn-like');
     if (btn) { btn.textContent = liked ? '❤️' : '♡'; btn.classList.toggle('liked', liked); }
+    const btnFp = document.getElementById('btn-like-fp');
+    if (btnFp) { btnFp.textContent = liked ? '❤️' : '♡'; btnFp.classList.toggle('liked', liked); }
   }
 
   // ── Liked Songs ──
@@ -171,6 +173,8 @@ const App = (() => {
     const liked = likedSongs.some(s => s.id === currentSong.id);
     const btn = document.getElementById('btn-like');
     if (btn) { btn.textContent = liked ? '❤️' : '♡'; btn.classList.toggle('liked', liked); }
+    const btnFp = document.getElementById('btn-like-fp');
+    if (btnFp) { btnFp.textContent = liked ? '❤️' : '♡'; btnFp.classList.toggle('liked', liked); }
   }
 
   function toggleLikeSong(song) {

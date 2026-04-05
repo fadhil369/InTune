@@ -167,13 +167,13 @@
   <!-- ══════════ PLAYER BAR ══════════ -->
   <footer class="player-bar">
     <!-- Now Playing -->
-    <div class="now-playing">
+    <div class="now-playing" onclick="document.getElementById('full-player').classList.add('open')">
       <img id="np-thumb" class="np-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect width='50' height='50' rx='9' fill='%23222'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='22'%3E🎵%3C/text%3E%3C/svg%3E" alt="album art">
       <div class="np-info">
         <div class="np-title" id="np-title">Nothing playing</div>
         <div class="np-artist" id="np-artist">InTune</div>
       </div>
-      <button class="btn-like" id="btn-like" onclick="App.toggleLike()" title="Like">♡</button>
+      <button class="btn-like" id="btn-like" onclick="App.toggleLike(); event.stopPropagation();" title="Like">♡</button>
     </div>
     <!-- Controls -->
     <div class="player-center">
@@ -252,6 +252,57 @@
         <input id="modal-pair-input" type="text" maxlength="10" placeholder="Enter partner's 10-digit code" autocomplete="off" inputmode="numeric" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; padding:12px; color:#fff; font-family:'Inter', monospace; font-size:14px; outline:none; text-align:center; font-weight: 600; letter-spacing:1px;">
         <button onclick="Pairing.connectAs('guest', document.getElementById('modal-pair-input').value); document.getElementById('pair-modal').classList.remove('open')" style="background:var(--gradient); border:none; border-radius:10px; padding:0 20px; color:#fff; font-weight:bold; cursor:pointer;">Connect</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ FULL SCREEN PLAYER OVERLAY ══════════ -->
+<div class="full-player" id="full-player">
+  <div class="fp-header">
+    <button class="btn-fp-down" onclick="document.getElementById('full-player').classList.remove('open')">⌄</button>
+    <div class="fp-header-text">Now Playing</div>
+    <button class="btn-fp-menu">⋮</button>
+  </div>
+  
+  <div class="fp-art-wrap">
+    <img id="fp-thumb" class="fp-thumb" src="" alt="Album Art">
+  </div>
+  
+  <div class="fp-meta">
+    <div class="fp-text">
+      <div class="fp-title" id="fp-title">Nothing playing</div>
+      <div class="fp-artist" id="fp-artist">InTune</div>
+    </div>
+    <button class="btn-like-fp" id="btn-like-fp" onclick="App.toggleLike()">♡</button>
+  </div>
+
+  <div class="fp-progress-row">
+    <div class="progress-track fp-progress-track" id="fp-progress-track">
+      <div class="progress-fill fp-progress-fill" id="fp-progress-fill" style="width:0%"></div>
+      <div class="progress-thumb fp-progress-thumb" id="fp-progress-thumb" style="left:0%"></div>
+    </div>
+    <div class="fp-times">
+      <span class="t-lbl-fp" id="t-cur-fp">0:00</span>
+      <span class="t-lbl-fp" id="t-tot-fp">0:00</span>
+    </div>
+  </div>
+
+  <div class="fp-controls">
+    <button class="ctrl-fp" id="btn-shuffle-fp" onclick="Player.toggleShuffle()">⇄</button>
+    <button class="ctrl-fp" id="btn-prev-fp" onclick="Player.prev()">⏮</button>
+    <button class="ctrl-play-fp" id="btn-play-fp" onclick="Player.togglePlay()">▶</button>
+    <button class="ctrl-fp" id="btn-next-fp" onclick="Player.next()">⏭</button>
+    <button class="ctrl-fp" id="btn-repeat-fp" onclick="Player.toggleRepeat()">⟲</button>
+  </div>
+  
+  <div class="fp-bottom-actions">
+    <div class="vol-wrap fp-vol-wrap">
+      <span class="vol-icon" id="vol-icon-fp" onclick="Player.toggleMute()">🔊</span>
+      <input class="vol-slider" type="range" id="vol-slider-fp" min="0" max="100" value="80" oninput="Player.setVolume(this.value)">
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-dl-player fp-hires-toggle" id="btn-hires-toggle-fp" onclick="Player.toggleHires()" style="background: rgba(255,255,255,0.1);">🎧 HQ</button>
+      <button class="btn-dl-player fp-dl-btn" id="btn-dl-player-fp" onclick="Player.download()">⬇ MP3</button>
     </div>
   </div>
 </div>
