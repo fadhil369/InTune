@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="InTune – Stream YouTube music, sync across devices, connect dual Bluetooth speakers">
+<meta name="theme-color" content="#0a0a14">
+<title>InTune – Music for Everyone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎵</div>
+      <span class="logo-text">InTune</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" id="nav-home" onclick="App.showPage('home')">
+        <span class="nav-icon">🏠</span> Home
+      </button>
+      <button class="nav-item" id="nav-search" onclick="App.showPage('search')">
+        <span class="nav-icon">🔍</span> Search
+      </button>
+      <button class="nav-item" id="nav-liked" onclick="App.showPage('liked')">
+        <span class="nav-icon">❤️</span> Liked Songs
+      </button>
+      <button class="nav-item" id="nav-downloads" onclick="App.showPage('downloads')">
+        <span class="nav-icon">⬇️</span> Downloads
+      </button>
+    </nav>
+    <div class="sidebar-sep"></div>
+    <div class="sidebar-section-title">Quick Genres</div>
+    <div id="sidebar-genres"></div>
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-text">InTune v1.0 &bull; YouTube Powered<br>Pair code: share to sync devices</div>
+    </div>
+  </aside>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="nav-btns">
+        <button class="btn-nav" onclick="history.back()">&#8592;</button>
+        <button class="btn-nav" onclick="history.forward()">&#8594;</button>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" type="text" placeholder="Search songs, artists, albums…" autocomplete="off">
+      </div>
+      <div class="pair-box" title="Enter a 10-digit code from another device to sync music">
+        <span class="pair-label">🔗 Pair</span>
+        <input id="pair-input" type="text" maxlength="10" placeholder="0000000000" autocomplete="off" inputmode="numeric">
+        <button id="btn-pair" onclick="Pairing.connectAs('guest')">Connect</button>
+      </div>
+      <div class="top-actions">
+        <!-- New Pair Icon button for mobile! -->
+        <button class="btn-icon-top mobile-only-icon" id="btn-open-pair" onclick="document.getElementById('pair-modal').classList.add('open')" title="Pair Devices">🔗</button>
+        <button class="btn-icon-top" id="btn-bt" onclick="BT.openModal()" title="Bluetooth Speakers">🔵</button>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <div class="page-content">
+
+      <!-- HOME PAGE -->
+      <div id="page-home" class="page active">
+        <div class="hero-banner">
+          <div class="hero-title">Good Evening 🎶</div>
+          <div class="hero-sub">Stream & sync music across all your devices</div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">Quick Play</span>
+          </div>
+          <div class="genre-grid" id="genre-grid"></div>
+        </div>
+        <div class="section" id="recent-section">
+          <div class="section-header">
+            <span class="section-title">Trending Now</span>
+            <button class="btn-see-all" onclick="Discovery.loadTrending()">Refresh</button>
+          </div>
+          <div class="song-row" id="trending-row"></div>
+        </div>
+        <div class="section hidden" id="because-section">
+          <div class="section-header">
+            <span class="section-title" id="because-title">Because you listened to…</span>
+          </div>
+          <div class="song-row" id="because-row"></div>
+        </div>
+
+        <!-- HI-FI AUDIO SECTION -->
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">🎧 Hi-Fi Audio — Best Quality</span>
+            <button class="btn-see-all" onclick="Discovery.loadHiFi()">Refresh</button>
+          </div>
+          <div class="hifi-badge">✦ 256kbps · Maximum YouTube Quality · Audiophile Grade</div>
+          <div class="song-row" id="hifi-row"></div>
+        </div>
+
+        <!-- WORLD MUSIC SECTION -->
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">🌍 World Music — Every Language</span>
+          </div>
+          <p class="world-sub">All songs from YouTube in every language. Tap a language to explore.</p>
+          <div class="lang-grid" id="lang-grid"></div>
+        </div>
+
+        <!-- LANGUAGE SONG ROWS (dynamically shown) -->
+        <div class="section hidden" id="lang-songs-section">
+          <div class="section-header">
+            <span class="section-title" id="lang-songs-title">Songs</span>
+            <button class="btn-see-all" onclick="App.showPage('search')">See All</button>
+          </div>
+          <div class="song-row" id="lang-songs-row"></div>
+        </div>
+
+        <!-- NEW RELEASES -->
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">🆕 New Releases 2025</span>
+            <button class="btn-see-all" onclick="Discovery.loadNew()">Refresh</button>
+          </div>
+          <div class="song-row" id="new-row"></div>
+        </div>
+
+      </div>
+
+      <!-- SEARCH PAGE -->
+      <div id="page-search" class="page">
+        <div class="section-header" style="margin-bottom:16px">
+          <span class="section-title" id="search-heading">Search Results</span>
+        </div>
+        <div id="result-list" class="result-list"></div>
+      </div>
+
+      <!-- LIKED PAGE -->
+      <div id="page-liked" class="page">
+        <div class="section-header" style="margin-bottom:16px">
+          <span class="section-title">❤️ Liked Songs</span>
+        </div>
+        <div id="liked-list" class="result-list"></div>
+      </div>
+
+      <!-- DOWNLOADS PAGE -->
+      <div id="page-downloads" class="page">
+        <div class="section-header" style="margin-bottom:16px">
+          <span class="section-title">⬇️ Downloads</span>
+        </div>
+        <div id="downloads-list" class="result-list"></div>
+        <p id="dl-empty" style="color:var(--text-muted);font-size:14px;margin-top:20px">No downloads yet. Hit ⬇ on any song to save it.</p>
+      </div>
+
+    </div><!-- end page-content -->
+  </main>
+
+  <!-- ══════════ PLAYER BAR ══════════ -->
+  <footer class="player-bar">
+    <!-- Now Playing -->
+    <div class="now-playing">
+      <img id="np-thumb" class="np-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect width='50' height='50' rx='9' fill='%23222'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='22'%3E🎵%3C/text%3E%3C/svg%3E" alt="album art">
+      <div class="np-info">
+        <div class="np-title" id="np-title">Nothing playing</div>
+        <div class="np-artist" id="np-artist">InTune</div>
+      </div>
+      <button class="btn-like" id="btn-like" onclick="App.toggleLike()" title="Like">♡</button>
+    </div>
+    <!-- Controls -->
+    <div class="player-center">
+      <div class="player-btns">
+        <button class="ctrl" id="btn-shuffle" onclick="Player.toggleShuffle()" title="Shuffle">⇄</button>
+        <button class="ctrl" id="btn-prev" onclick="Player.prev()" title="Previous">⏮</button>
+        <button class="ctrl-play" id="btn-play" onclick="Player.togglePlay()" title="Play/Pause">▶</button>
+        <button class="ctrl" id="btn-next" onclick="Player.next()" title="Next">⏭</button>
+        <button class="ctrl" id="btn-repeat" onclick="Player.toggleRepeat()" title="Repeat">⟲</button>
+      </div>
+      <div class="progress-row">
+        <span class="t-lbl" id="t-cur">0:00</span>
+        <div class="progress-track" id="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+          <div class="progress-thumb" id="progress-thumb" style="left:0%"></div>
+        </div>
+        <span class="t-lbl" id="t-tot">0:00</span>
+      </div>
+    </div>
+    <!-- Right -->
+    <div class="player-right">
+      <div class="pair-code-badge hidden" id="pair-code-badge" onclick="App.copyPairCode()" title="Click to copy pair code">
+        📱 <span id="pair-code-text">0000000000</span>
+      </div>
+      <button class="btn-dl-player" id="btn-hires-toggle" onclick="Player.toggleHires()" title="Toggle Hi-Res Audio Mode" style="background: rgba(255,255,255,0.1);">🎧 HQ: OFF</button>
+      <button class="btn-dl-player" id="btn-dl-player" onclick="Player.download()" title="Download MP3">⬇ MP3</button>
+      <div class="vol-wrap">
+        <span class="vol-icon" id="vol-icon" onclick="Player.toggleMute()">🔊</span>
+        <input class="vol-slider" type="range" id="vol-slider" min="0" max="100" value="80" oninput="Player.setVolume(this.value)">
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mobile nav -->
+  <nav class="mobile-nav">
+    <button class="mob-btn active" id="mobn-home" onclick="App.showPage('home')"><span class="mob-icon">🏠</span>Home</button>
+    <button class="mob-btn" id="mobn-search" onclick="App.showPage('search')"><span class="mob-icon">🔍</span>Search</button>
+    <button class="mob-btn" id="mobn-liked" onclick="App.showPage('liked')"><span class="mob-icon">❤️</span>Liked</button>
+    <button class="mob-btn" id="mobn-dl" onclick="App.showPage('downloads')"><span class="mob-icon">⬇️</span>Downloads</button>
+    <button class="mob-btn" id="mobn-bt" onclick="BT.openModal()"><span class="mob-icon">🔵</span>Speakers</button>
+  </nav>
+
+</div><!-- #app -->
+
+<!-- ══════════ BLUETOOTH MODAL ══════════ -->
+<div class="modal-overlay" id="bt-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔵 Bluetooth Speakers</span>
+      <button class="modal-close" onclick="BT.closeModal()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Connect up to 2 Bluetooth speakers. Audio will stream to both simultaneously.</p>
+    <div id="bt-device-list"></div>
+    <button class="btn-scan" onclick="BT.scan()">+ Scan for Bluetooth Speaker</button>
+    <p class="bt-limit-note">⚠️ Requires Chrome on Android/Desktop with Bluetooth enabled.<br>For best audio sync, use speakers in TWS mode if available.</p>
+  </div>
+</div>
+
+<!-- ══════════ PAIR CODE MODAL ══════════ -->
+<div class="modal-overlay" id="pair-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔗 Device Pairing</span>
+      <button class="modal-close" onclick="document.getElementById('pair-modal').classList.remove('open')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Share this code with another device. They type it in the top bar to sync playback.</p>
+    <div style="background:rgba(139,92,246,.12);border:2px solid var(--border-glow);border-radius:14px;padding:22px;text-align:center;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px">Your Pair Code</div>
+      <div id="modal-pair-code" style="font-size:32px;font-weight:900;letter-spacing:6px;color:var(--primary-bright);font-family:monospace">----------</div>
+    </div>
+    <button onclick="App.copyPairCode()" style="width:100%;padding:12px;background:var(--gradient);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px">📋 Copy Code</button>
+    
+    <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px">Connect to a Device</div>
+      <div style="display:flex; gap: 8px;">
+        <input id="modal-pair-input" type="text" maxlength="10" placeholder="Enter partner's 10-digit code" autocomplete="off" inputmode="numeric" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; padding:12px; color:#fff; font-family:'Inter', monospace; font-size:14px; outline:none; text-align:center; font-weight: 600; letter-spacing:1px;">
+        <button onclick="Pairing.connectAs('guest', document.getElementById('modal-pair-input').value); document.getElementById('pair-modal').classList.remove('open')" style="background:var(--gradient); border:none; border-radius:10px; padding:0 20px; color:#fff; font-weight:bold; cursor:pointer;">Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toasts container -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- Pair status banner (hidden by default) -->
+<div class="pair-banner hidden" id="pair-banner">
+  <div class="pair-dot"></div>
+  <span id="pair-banner-text">Connected to device</span>
+</div>
+
+<!-- YouTube iframe (hidden) -->
+<div id="yt-container" style="position:fixed;left:-9999px;width:1px;height:1px;overflow:hidden">
+  <div id="yt-player"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="js/discovery.js"></script>
+<script src="js/player.js"></script>
+<script src="js/pairing.js"></script>
+<script src="js/bluetooth.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
