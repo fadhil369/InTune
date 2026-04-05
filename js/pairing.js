@@ -1,23 +1,18 @@
 /**
- * pairing.js — High-precision PeerJS sync with latency compensation + drift correction
- *
- * How it works:
- * 1. Host pings guest → measures RTT → knows one-way latency
- * 2. Every sync message carries server timestamp + player position
- * 3. Guest compensates: actualPos = sentPos + (elapsed + latency/2)
- * 4. Host sends heartbeat every 1.5s → guest corrects drift if > 0.8s
- * 5. On play/pause/seek → instant precise sync with timestamp
+ * pairing.js — High-precision PeerJS sync with latency compensation + drift correction 
+ * Multi-Device Star Topology (1 Host to N Guests)
  */
 const Pairing = (() => {
   let peer = null;
-  let conn = null;
+  let conns = [];        // Array of active connections
   let myCode = null;
   let role = null;       // 'host' | 'guest'
-  let latency = 0;       // estimated one-way latency in ms
   let heartbeatTimer = null;
   let pingTimer = null;
-  let pingStartTime = 0;
   let isSyncing = false; // prevent re-entrant sync
+
+  // Guest latency estimation
+  let guestLatency = 0; 
 
   // ── Code generation ──
   function genCode() {
@@ -27,7 +22,6 @@ const Pairing = (() => {
   // ── Host: init ──
   function initHost() {
     myCode = genCode();
-    // Use default reliable PeerJS cloud server rather than hardcoding IP/ports
     peer = new Peer(myCode);
 
     peer.on('open', id => {
@@ -36,10 +30,9 @@ const Pairing = (() => {
     });
 
     peer.on('connection', c => {
-      // If already have a connection, close old one
-      if (conn && conn.open) conn.close();
-      conn = c;
-      setupHostConn(conn);
+      // Accept unlimited guests!
+      conns.push(c);
+      setupHostConn(c);
     });
 
     peer.on('error', e => {
@@ -51,41 +44,48 @@ const Pairing = (() => {
   function setupHostConn(c) {
     c.on('open', () => {
       role = 'host';
-      showPairBanner('Guest device connected!');
-      App.toast('📱 Device paired! Music will stay in sync.', 'success');
+      updateConnectedBanner();
+      App.toast('📱 Guest device paired!', 'success');
 
-      // Measure latency immediately
-      measureLatency(c);
+      c.pingStartTime = Date.now();
+      c.send({ type: 'ping', ts: c.pingStartTime });
 
-      // Send current playback state immediately
       setTimeout(() => sendCurrentState(c), 300);
 
-      // Start heartbeat — sends position every 1.5s for drift correction
-      startHeartbeat(c);
+      // Start global heartbeat if not already running
+      startHeartbeat();
+      startPingLoop();
     });
 
     c.on('data', msg => {
       if (!msg || !msg.type) return;
       if (msg.type === 'pong') {
-        // Calculate RTT, estimate one-way latency
-        const rtt = Date.now() - pingStartTime;
-        latency = Math.round(rtt / 2);
-        console.log(`[Pairing] Latency: ${latency}ms (RTT: ${rtt}ms)`);
+        const rtt = Date.now() - (c.pingStartTime || Date.now());
+        c.latency = Math.round(rtt / 2);
         return;
       }
       
-      // Allow two-way party control (Guest -> Host)
+      // Relay commands from Guest A to Guest B, C...
       if (['play', 'pause', 'seek', 'next', 'prev', 'load', 'state'].includes(msg.type)) {
-        handleSyncMsg(msg);
+        conns.forEach(guestConn => {
+          if (guestConn.peer !== c.peer && guestConn.open) {
+             guestConn.send({ ...msg, ts: Date.now() });
+          }
+        });
+        handleSyncMsg(msg, c.latency || 0);
       }
     });
 
     c.on('close', () => {
-      stopHeartbeat();
-      hidePairBanner();
-      App.toast('Paired device disconnected', 'info');
-      latency = 0;
+      conns = conns.filter(conn => conn !== c);
+      updateConnectedBanner();
+      if (conns.length === 0) {
+        stopTimers();
+        hidePairBanner();
+        App.toast('All devices disconnected', 'info');
+      }
     });
+
     c.on('error', e => console.warn('[Pairing] conn error', e));
   }
 
@@ -96,14 +96,14 @@ const Pairing = (() => {
 
     if (peer) { try { peer.destroy(); } catch {} peer = null; }
 
-    // Use default reliable PeerJS cloud server
     peer = new Peer();
 
     peer.on('open', () => {
       role = 'guest';
       App.toast('Connecting to host…', 'info');
-      conn = peer.connect(code, { reliable: true, serialization: 'json' });
-      setupGuestConn(conn);
+      const c = peer.connect(code, { reliable: true, serialization: 'json' });
+      conns = [c]; // Guest only ever has 1 connection to Host
+      setupGuestConn(c);
     });
 
     peer.on('error', e => App.toast('Could not pair: ' + e.type, 'error'));
@@ -119,34 +119,41 @@ const Pairing = (() => {
       if (!msg || !msg.type) return;
 
       if (msg.type === 'ping') {
-        // Reply immediately for latency measurement
         c.send({ type: 'pong', ts: msg.ts });
         return;
       }
 
-      handleSyncMsg(msg);
+      handleSyncMsg(msg, guestLatency);
     });
 
-    c.on('close', () => { hidePairBanner(); App.toast('Lost connection to host', 'info'); role = null; });
+    c.on('close', () => { 
+      conns = []; 
+      hidePairBanner(); 
+      App.toast('Lost connection to host', 'info'); 
+      role = null; 
+    });
     c.on('error', e => console.warn('[Pairing] guest conn error', e));
   }
 
-  // ── Latency measurement (host pings guest, guest pongs back) ──
-  function measureLatency(c) {
-    pingStartTime = Date.now();
-    c.send({ type: 'ping', ts: pingStartTime });
-    // Re-measure every 10s to track change
+  // ── Pinging logic ──
+  function startPingLoop() {
+    if (pingTimer) return;
     pingTimer = setInterval(() => {
-      if (c && c.open) { pingStartTime = Date.now(); c.send({ type: 'ping', ts: pingStartTime }); }
+      conns.forEach(c => {
+        if (c.open && role === 'host') {
+          c.pingStartTime = Date.now();
+          c.send({ type: 'ping', ts: c.pingStartTime });
+        }
+      });
     }, 10000);
   }
 
-  // ── Host: send current player state to guest ──
+  // ── Host: send current player state to a specific new guest ──
   function sendCurrentState(c) {
     const cur = Player.getCurrent();
-    if (!cur) return;
+    if (!cur || !c.open) return;
     const position = Player.getCurrentTime();
-    const isPlaying = Player.getState() === 1; // YT PLAYING = 1
+    const isPlaying = Player.getState() === 1 || Player.getState() === 2; 
     c.send({
       type: 'state',
       videoId: cur.id,
@@ -161,38 +168,41 @@ const Pairing = (() => {
     });
   }
 
-  // ── Host: heartbeat every 1.5s (position sync for drift correction) ──
-  function startHeartbeat(c) {
-    stopHeartbeat();
+  // ── Host: universal heartbeat sync ──
+  function startHeartbeat() {
+    if (heartbeatTimer) return;
     heartbeatTimer = setInterval(() => {
-      if (c && c.open && Player.getState() === 1) { // only when playing
-        c.send({
-          type: 'heartbeat',
-          position: Player.getCurrentTime(),
-          ts: Date.now(),
+      const state = Player.getState();
+      if (state === 1 || state === 2) {
+        conns.forEach(c => {
+          if (c.open) {
+            c.send({
+              type: 'heartbeat',
+              position: Player.getCurrentTime(),
+              ts: Date.now(),
+            });
+          }
         });
       }
     }, 1500);
   }
 
-  function stopHeartbeat() {
+  function stopTimers() {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (pingTimer) clearInterval(pingTimer);
     heartbeatTimer = null;
     pingTimer = null;
   }
 
-  // ── Receive + apply messages with latency compensation (Bi-directional) ──
-  function handleSyncMsg(msg) {
+  // ── Receive + apply messages (Bi-directional Party Mode) ──
+  function handleSyncMsg(msg, specificLatency = 0) {
     if (isSyncing) return;
     isSyncing = true;
     setTimeout(() => isSyncing = false, 100);
 
-    // Calculate how much time passed since host sent this
-    const networkDelay = (Date.now() - msg.ts) / 1000; // in seconds
+    const networkDelay = (Date.now() - msg.ts) / 1000; 
 
     if (msg.type === 'state' || msg.type === 'load') {
-      // Load or state sync: load the video + seek to compensated position
       const compensatedPos = (msg.position || 0) + networkDelay;
       Player.remoteControl({
         type: 'load',
@@ -211,30 +221,26 @@ const Pairing = (() => {
       Player.remoteControl({ type: 'play', position: compensatedPos });
     }
     else if (msg.type === 'pause') {
-      // For pause, seek to exact position (no time has passed logically)
       Player.remoteControl({ type: 'pause', position: msg.position || 0 });
     }
     else if (msg.type === 'seek') {
       Player.remoteControl({ type: 'seek', position: msg.position || 0 });
     }
     else if (msg.type === 'heartbeat') {
-      if (role === 'host') return; // Only Guest aligns drift to Host
+      if (role === 'host') return; 
       
-      const expectedPos = (msg.position || 0) + networkDelay + (latency / 1000) + 0.01;
+      const expectedPos = (msg.position || 0) + networkDelay + (specificLatency / 1000) + 0.01;
       const actualPos = Player.getCurrentTime();
-      const drift = expectedPos - actualPos; // Positive = we are behind
+      const drift = expectedPos - actualPos;
       
       if (Math.abs(drift) > 1.5 && Math.abs(drift) < 30) {
-        // Hard seek if very out of sync > 1.5s
         console.log(`[Pairing] Hard seek for drift: ${drift.toFixed(2)}s`);
         Player.remoteControl({ type: 'seek', position: expectedPos });
         Player.setPlaybackRate(1.0);
       } else if (Math.abs(drift) > 0.02) {
-        // Millisecond precision pitching: seamlessly adjust speed to catch up or wait
-        const rate = 1.0 + (drift * 0.15); // e.g. 0.1s drift = 1.015x speed
+        const rate = 1.0 + (drift * 0.15); 
         Player.setPlaybackRate(rate);
       } else {
-        // We are perfectly in sync
         Player.setPlaybackRate(1.0);
       }
     }
@@ -246,14 +252,17 @@ const Pairing = (() => {
     }
   }
 
-  // ── Public: send event (Bi-directional Party Mode) ──
+  // ── Public: send event to all connected devices ──
   function sendSync(msg) {
-    if (!conn || !conn.open) return;
-    try {
-      conn.send({ ...msg, ts: Date.now() });
-    } catch (e) {
-      console.warn('[Pairing] sendSync failed', e);
-    }
+    if (conns.length === 0) return;
+    const payload = { ...msg, ts: Date.now() };
+    conns.forEach(c => {
+      try {
+        if (c.open) c.send(payload);
+      } catch (e) {
+        console.warn('[Pairing] sendSync failed', e);
+      }
+    });
   }
 
   // ── UI helpers ──
@@ -262,6 +271,13 @@ const Pairing = (() => {
     document.getElementById('pair-code-text').textContent = code;
     document.getElementById('pair-code-badge').classList.remove('hidden');
     document.getElementById('modal-pair-code').textContent = code;
+  }
+
+  function updateConnectedBanner() {
+    if (conns.length > 0) {
+      const text = conns.length === 1 ? '1 Device Linked' : `${conns.length} Devices Linked`;
+      showPairBanner(text);
+    }
   }
 
   function showPairBanner(text) {
@@ -273,12 +289,10 @@ const Pairing = (() => {
     document.getElementById('pair-banner').classList.add('hidden');
   }
 
-  function getCode() { return myCode; }
-
   return {
     init: initHost,
     connectAs: (_, code) => connectAsGuest(code || document.getElementById('pair-input').value),
     sendSync,
-    getCode,
+    getCode: () => myCode,
   };
 })();
