@@ -542,32 +542,23 @@ const Player = (() => {
       currentSong.id = targetId;
     }
 
-    App.toast('Preparing download…', 'info');
-    try {
-      const res = await fetch('https://api.cobalt.tools/api/json', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: `https://www.youtube.com/watch?v=${targetId}`,
-          aFormat: 'mp3',
-          isAudioOnly: true,
-          filenamePattern: 'basic',
-        }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        App.addDownload(currentSong, data.url);
-        const a = document.createElement('a');
-        a.href = data.url; a.download = `${currentSong.title}.mp3`; a.target = '_blank'; a.click();
-        App.toast('⬇ Download started!', 'success');
-      } else { fallbackDownload(targetId); }
-    } catch { fallbackDownload(targetId); }
+    fallbackDownload(targetId);
   }
 
   function fallbackDownload(targetId) {
     if (!targetId) return;
-    window.open(`https://www.y2mate.com/youtube-mp3/${targetId}`, '_blank');
-    App.toast('Opening download page…', 'info');
+    const url = `https://www.youtube.com/watch?v=${targetId}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        window.open('https://cobalt.tools', '_blank');
+        App.toast('URL copied! Paste in Cobalt to download ✨', 'success');
+      }).catch(() => {
+        window.open(`https://cobalt.tools`, '_blank');
+        App.toast('Failed to copy. URL: ' + url, 'error');
+      });
+    } else {
+      window.open(`https://cobalt.tools`, '_blank');
+    }
   }
 
   function downloadById(song) {
@@ -590,10 +581,28 @@ const Player = (() => {
     }
   }
 
+  let currentSpeedOffset = 0;
+  function adjSpeedDrop(delta) {
+    currentSpeedOffset += delta;
+    const valSpan = document.getElementById('sync-speed-val');
+    const valSpanFp = document.getElementById('sync-speed-val-fp');
+    if (valSpan) valSpan.textContent = currentSpeedOffset;
+    if (valSpanFp) valSpanFp.textContent = currentSpeedOffset;
+    applySpeedDrop();
+  }
+
+  function applySpeedDrop() {
+    const rate = 1.0 + (currentSpeedOffset * 0.1);
+    setPlaybackRate(rate);
+    const speedFormatted = rate.toFixed(1);
+    App.toast(`Playback speed set to ${speedFormatted}x`, 'info');
+  }
+
   return {
     playSong, setQueue, togglePlay, prev, next, seekTo, toggleHires,
     setVolume, toggleMute, toggleShuffle, toggleRepeat,
-    remoteControl, download, downloadById, setPlaybackRate,
+    remoteControl, download, downloadById, setPlaybackRate, 
+    adjSpeedDrop, applySpeedDrop,
     getCurrent: () => currentSong,
     getState: () => {
       const isHtmlAudio = currentSong && currentSong.streamUrl || useHires;

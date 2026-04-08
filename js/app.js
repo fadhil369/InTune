@@ -166,6 +166,21 @@ const App = (() => {
     if (btnFp) { btnFp.textContent = liked ? '❤️' : '♡'; btnFp.classList.toggle('liked', liked); }
   }
 
+  // ── Easy Play Mix ──
+  function playEasyMix() {
+    const allSeeds = [
+      ...Discovery.SEED_TRENDING,
+      ...Object.values(Discovery.GENRE_SEEDS || {}).flat()
+    ];
+    // Shuffle the mix
+    for (let i = allSeeds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allSeeds[i], allSeeds[j]] = [allSeeds[j], allSeeds[i]];
+    }
+    Player.setQueue(allSeeds.slice(0, 50), 0);
+    toast('Playing your custom Taste Mix 🎶', 'success');
+  }
+
   // ── Liked Songs ──
   function toggleLike() {
     if (!currentSong) return;
@@ -280,6 +295,6 @@ const App = (() => {
   return {
     showPage, showSongRow, showResultsLoading, renderResultList,
     onSongChanged, toggleLike, toggleLikeSong, addDownload, removeDownload,
-    copyPairCode, toast,
+    copyPairCode, toast, playEasyMix,
   };
 })();

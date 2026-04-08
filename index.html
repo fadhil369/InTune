@@ -76,6 +76,7 @@
         <div class="hero-banner">
           <div class="hero-title">Good Evening 🎶</div>
           <div class="hero-sub">Stream & sync music across all your devices</div>
+          <button style="margin-top:16px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:8px 16px;border-radius:20px;font-weight:700;font-family:inherit;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="App.playEasyMix()"><span style="font-size:18px">✨</span> Play Taste Mix</button>
         </div>
         <div class="section">
           <div class="section-header">
@@ -198,6 +199,11 @@
       <div class="pair-code-badge hidden" id="pair-code-badge" onclick="App.copyPairCode()" title="Click to copy pair code">
         📱 <span id="pair-code-text">0000000000</span>
       </div>
+      <div class="speed-ctrl-wrap" title="Adjust playback speed for sync">
+        <button class="btn-speed-adj" onclick="Player.adjSpeedDrop(-1)">-</button>
+        <span class="speed-val" id="sync-speed-val">0</span>
+        <button class="btn-speed-adj" onclick="Player.adjSpeedDrop(1)">+</button>
+      </div>
       <button class="btn-dl-player" id="btn-hires-toggle" onclick="Player.toggleHires()" title="Toggle Hi-Res Audio Mode" style="background: rgba(255,255,255,0.1);">🎧 HQ: OFF</button>
       <button class="btn-dl-player" id="btn-dl-player" onclick="Player.download()" title="Download MP3">⬇ MP3</button>
       <div class="vol-wrap">
@@ -293,6 +299,14 @@
     <button class="ctrl-play-fp" id="btn-play-fp" onclick="Player.togglePlay()">▶</button>
     <button class="ctrl-fp" id="btn-next-fp" onclick="Player.next()">⏭</button>
     <button class="ctrl-fp" id="btn-repeat-fp" onclick="Player.toggleRepeat()">⟲</button>
+  </div>
+
+  <div style="display:flex; justify-content:center; margin-bottom: 25px;">
+    <div class="speed-ctrl-wrap" title="Adjust playback speed for sync">
+      <button class="btn-speed-adj" onclick="Player.adjSpeedDrop(-1)">-</button>
+      <span class="speed-val" id="sync-speed-val-fp">0</span>
+      <button class="btn-speed-adj" onclick="Player.adjSpeedDrop(1)">+</button>
+    </div>
   </div>
   
   <div class="fp-bottom-actions">

@@ -181,6 +181,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg-base);color:var(--text-p
 .vol-slider{-webkit-appearance:none;width:72px;height:4px;background:rgba(255,255,255,.1);border-radius:4px;outline:none}
 .vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;background:var(--text-primary);border-radius:50%;cursor:pointer}
 
+/* ── Speed / Delay Sync ── */
+.speed-ctrl-wrap { display: flex; align-items: center; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 12px; padding: 4px 6px; gap: 4px; flex-shrink: 0; }
+.btn-speed-adj { background: transparent; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; display:flex; align-items:center; justify-content:center; width: 20px; height: 20px; border-radius: 4px; transition: all 0.2s; }
+.btn-speed-adj:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.speed-val { color: #fff; font-size: 13px; font-weight: 700; min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
 /* ── Modals ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
 .modal-overlay.open{opacity:1;pointer-events:all}

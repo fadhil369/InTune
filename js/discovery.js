@@ -340,5 +340,5 @@ const Discovery = (() => {
     }
   }
 
-  return { search, searchGenre, loadBecause, buildGenreGrid, loadTrending, loadHiFi, resolveId, GENRES, SEED_TRENDING };
+  return { search, searchGenre, loadBecause, buildGenreGrid, loadTrending, loadHiFi, resolveId, GENRES, SEED_TRENDING, GENRE_SEEDS };
 })();
